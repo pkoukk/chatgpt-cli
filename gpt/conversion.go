@@ -49,7 +49,7 @@ func (ac *ApiConversion) GetConversion() Conversion {
 
 func (ac *ApiConversion) GetMessages() []ConversionMessage {
 	var messages []ConversionMessage
-	for i := ac.messageWindow; i < len(ac.c.Messages); i++ {
+	for i := 0; i < len(ac.c.Messages); i++ {
 		messages = append(messages, *ac.c.Messages[i])
 	}
 	return messages
@@ -93,7 +93,7 @@ func (ac *ApiConversion) RemoveMessageAt(index int) {
 	ac.calcWindow()
 }
 
-func (ac *ApiConversion) GetResponseMessages() ([]*ConversionMessage, error) {
+func (ac *ApiConversion) GetResponseMessages() ([]ConversionMessage, error) {
 	windowedMessages := ac.c.Messages[ac.messageWindow:]
 	chatMessages := make([]*ChatMessage, len(windowedMessages))
 	for i := range windowedMessages {
@@ -112,10 +112,10 @@ func (ac *ApiConversion) GetResponseMessages() ([]*ConversionMessage, error) {
 		return nil, err
 	}
 
-	messages := make([]*ConversionMessage, len(res.Choices))
+	messages := make([]ConversionMessage, len(res.Choices))
 	for i := range res.Choices {
 		if res.Choices[i].Message.Content != "" {
-			messages[i] = &ConversionMessage{
+			messages[i] = ConversionMessage{
 				ChatMessage: &res.Choices[i].Message,
 			}
 		}

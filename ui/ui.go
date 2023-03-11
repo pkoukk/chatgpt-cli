@@ -1,15 +1,17 @@
 package ui
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/manifoldco/promptui"
 	"github.com/pkoukk/chatgpt-cli/gpt"
+	"github.com/pkoukk/survey/v2"
 )
 
 type CLI struct {
@@ -188,81 +190,106 @@ func (u *CLI) StartMessaging() {
 	if u.ac == nil {
 		u.initApiConversion()
 	}
-startLabel:
-	showMessages := u.ac.GetMessages()
-	options := []any{}
-	for _, m := range showMessages {
-		options = append(options, m)
-	}
-
-	addMessage := getLanguageDes(Key_OPTION_AddMessage)
-	sendMessage := getLanguageDes(Key_OPTION_SendMessage)
-	exit := getLanguageDes(Key_OPTION_ExitConversion)
-
-	options = append(options, addMessage, sendMessage, exit)
-	p := promptui.Select{
-		Label:     getLanguageDes(Key_LABEL_SelectMessage),
-		Items:     options,
-		CursorPos: len(options) - 1,
-		Size:      20,
-	}
-	id, result, err := p.Run()
-	if err != nil {
-		fmt.Printf("Prompt failed %v\n", err)
-		// goto startLabel
-	}
-	if result == addMessage {
-		if role, content, err := editMessage("", ""); err != nil {
-			fmt.Printf("Add message failed %v\n", err)
-		} else {
-			u.ac.AppendMessage(gpt.ChatRole(role), content)
-		}
-		goto startLabel
-	} else if result == sendMessage {
-		if msgs, err := u.ac.GetResponseMessages(); err != nil {
-			fmt.Printf("Send failed %v\n", err)
-		} else {
-			p := promptui.Select{
-				Label: getLanguageDes(Key_LABEL_SelectResponseMessage),
-				Items: msgs,
+	for {
+		showMessages := u.ac.GetMessages()
+		addMessage := getLanguageDes(Key_OPTION_AddMessage)
+		sendMessage := getLanguageDes(Key_OPTION_SendMessage)
+		exit := getLanguageDes(Key_OPTION_ExitConversion)
+		id, result, err := u.pickOneMessage(showMessages, addMessage, sendMessage, exit)
+		if err != nil {
+			fmt.Printf("Failed to select message: %v\n", err)
+		} else if result == addMessage {
+			if role, content, err := editMessage("", ""); err != nil {
+				fmt.Printf("Add message failed %v\n", err)
+			} else {
+				u.ac.AppendMessage(gpt.ChatRole(role), content)
 			}
-			id, _, err := p.Run()
+		} else if result == sendMessage {
+			if msgs, err := u.ac.GetResponseMessages(); err != nil {
+				fmt.Printf("Send failed %v\n", err)
+			} else {
+				id, _, err := u.pickOneMessage(msgs)
+				if err != nil {
+					fmt.Printf("Failed to select message: %v", err)
+				}
+				if id >= 0 && id < len(msgs) {
+					u.ac.AppendMessage(msgs[id].Role, msgs[id].Content)
+				}
+			}
+		} else if id >= 0 && id < len(showMessages) {
+			edit := getLanguageDes(Key_OPTION_EditMessage)
+			delete := getLanguageDes(Key_OPTION_DeleteMessage)
+			back := getLanguageDes(Key_OPTION_Back)
+			p := promptui.Select{
+				Label: getLanguageDes(Key_LABEL_MessageOptions),
+				Items: []string{edit, delete, back},
+			}
+			_, result, err := p.Run()
 			if err != nil {
 				fmt.Printf("Prompt failed %v\n", err)
-				goto startLabel
+			} else if result == edit {
+				newRole, newContent, err := editMessage(string(showMessages[id].Role), showMessages[id].Content)
+				if err != nil {
+					fmt.Printf("Edit message failed %v\n", err)
+				} else {
+					u.ac.EditMessageAt(id, gpt.ChatRole(newRole), newContent)
+				}
+			} else if result == delete {
+				u.ac.RemoveMessageAt(id)
 			}
-			u.ac.AppendMessage(msgs[id].Role, msgs[id].Content)
-			goto startLabel
+		} else if result == exit {
+			u.SaveConversion(u.selectedConversion)
+			return
 		}
-	} else if id >= 0 && id < len(showMessages) {
-		edit := getLanguageDes(Key_OPTION_EditMessage)
-		delete := getLanguageDes(Key_OPTION_DeleteMessage)
-		back := getLanguageDes(Key_OPTION_Back)
-		p := promptui.Select{
-			Label: getLanguageDes(Key_LABEL_MessageOptions),
-			Items: []string{edit, delete, back},
-		}
-		_, result, err := p.Run()
-		if err != nil {
-			fmt.Printf("Prompt failed %v\n", err)
-			goto startLabel
-		}
-		if result == edit {
-			newRole, newContent, err := editMessage(string(showMessages[id].Role), showMessages[id].Content)
-			if err != nil {
-				fmt.Printf("Edit message failed %v\n", err)
-			} else {
-				u.ac.EditMessageAt(id, gpt.ChatRole(newRole), newContent)
-			}
-			goto startLabel
-		} else if result == delete {
-			u.ac.RemoveMessageAt(id)
-		}
-		goto startLabel
-	} else if result == exit {
-		u.SaveConversion(u.selectedConversion)
-		return
 	}
+}
+
+func (u *CLI) pickOneMessage(msgs []gpt.ConversionMessage, extraOptions ...string) (int, string, error) {
+	options := []string{}
+	for i := range msgs {
+		options = append(options, strconv.Itoa(i))
+	}
+	options = append(options, extraOptions...)
+	se := survey.Select{
+		Message: getLanguageDes(Key_LABEL_SelectMessage),
+		Options: options,
+		Default: options[len(options)-1],
+		Description: func(value string, index int) string {
+			if index < len(msgs) {
+				raw := strings.ReplaceAll(msgs[index].String(), "\n", "")
+				// charwidth := 60
+				// str := insertInto(raw, charwidth, '\n')
+				return raw
+			}
+			return ""
+		},
+	}
+
+	var result string
+	if err := survey.AskOne(&se, &result, survey.WithIcons(func(is *survey.IconSet) {
+		is.HelpInput.Format = "Magenta"
+	})); err != nil {
+		return 0, "", err
+	}
+	id, err := strconv.Atoi(result)
+	if err != nil {
+		id = -1
+	}
+	fmt.Printf("result is %v, id is %v \n", result, id)
+	return id, result, nil
+}
+
+func insertInto(s string, interval int, sep rune) string {
+	var buffer bytes.Buffer
+	before := interval - 1
+	last := len(s) - 1
+	for i, char := range s {
+		buffer.WriteRune(char)
+		if i%interval == before && i != last {
+			buffer.WriteRune(sep)
+		}
+	}
+	return buffer.String()
 }
 
 type questionMessage struct {
