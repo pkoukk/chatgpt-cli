@@ -13,6 +13,7 @@
 ## 配置说明
 
 ```json
+// 默认配置
 {
   "Host": "https://api.openai.com",
   "Proxy": "",
@@ -28,11 +29,11 @@
 
 - `Host` API域名，默认使用OpenAI官网地址，如果你要使用其它加速域名，在这里设置
 - `Proxy` 代理服务器地址，如果你需要使用代理，在这里配置
-- `DefaultConversionConfig` 每个会话默认使用的配置项
+- `DefaultConversionConfig` 每个会话默认使用的配置项,暂未开放对单独会话的配置，如果有需要，去会话目录下手动改一下吧
 - `Model` 会话使用的API模型，目前Chat模式仅限`gpt-3.5-turbo`
 - `Temperature` OpenAI Chat参数之一，控制模型随机性，参见OpenAI文档
 - `TopP` OpenAI Chat参数之一，控制模型随机性，参见OpenAI文档
-- `MaxTokens` **一轮会话发起时最多的Token数量，超过Token限制的历史会话会被剔出请求。越大的MaxTokens数量，AI的身份代入越强，但价格也越贵。**
+- `MaxTokens` **取代了OpenAI的参数。一轮会话发起时最多的Token数量，超过Token限制的历史会话会被剔出请求。越大的MaxTokens数量，AI的身份代入越强，但价格也越贵。**
 - `N` AI一次返回的回复数量，一次返回两条会比相同请求发起两次省量的多。
 
 ## 背景
