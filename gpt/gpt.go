@@ -14,6 +14,7 @@ type Conversion struct {
 	Name     string
 	Author   string
 	Created  int64
+	Updated  int64
 	Config   ConversionConfig
 	Messages []*ConversionMessage
 }

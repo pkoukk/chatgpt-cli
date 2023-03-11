@@ -3,6 +3,7 @@ package gpt
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -76,6 +77,7 @@ type Choice struct {
 }
 
 func (cc *ChatClient) Request(ctx context.Context, req *ChatRequest) (*ChatResponse, error) {
+	fmt.Println(req.Messages)
 	var res ChatResponse
 	_, err := cc.client.R().
 		SetAuthToken(cc.account.Token()).

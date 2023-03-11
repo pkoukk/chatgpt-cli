@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"time"
 
 	"github.com/pkoukk/chatgpt-cli/gpt"
 )
@@ -110,6 +111,7 @@ func saveConversions(conversions []*gpt.Conversion) error {
 }
 
 func saveConversion(conversion *gpt.Conversion) error {
+	conversion.Updated = time.Now().Unix()
 	fileName := "./chatgpt-cli/conversions/" + conversion.Name + ".json"
 	content, err := json.MarshalIndent(conversion, "", "  ")
 	if err != nil {

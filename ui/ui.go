@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -120,6 +121,9 @@ func (u *CLI) EditConfig() {
 func (u *CLI) SelectConversion() {
 start:
 	options := []any{}
+	sort.Slice(u.conversions, func(i, j int) bool {
+		return u.conversions[i].Created < u.conversions[j].Created
+	})
 	for _, conversion := range u.conversions {
 		options = append(options, conversion)
 	}
@@ -157,6 +161,7 @@ start:
 			goto start
 		} else {
 			answers.Created = time.Now().Unix()
+			answers.Updated = time.Now().Unix()
 			answers.Config = u.config.DefaultConversionConfig
 			u.conversions = append(u.conversions, &answers)
 			u.SaveConversion(&answers)
@@ -275,7 +280,6 @@ func (u *CLI) pickOneMessage(msgs []gpt.ConversionMessage, extraOptions ...strin
 	if err != nil {
 		id = -1
 	}
-	fmt.Printf("result is %v, id is %v \n", result, id)
 	return id, result, nil
 }
 
@@ -310,9 +314,11 @@ func editMessage(role, content string) (string, string, error) {
 		},
 		{
 			Name: "Content",
-			Prompt: &survey.Multiline{
-				Message: getLanguageDes(Key_MESSAGE_MessageContent),
-				Default: content,
+			Prompt: &survey.Editor{
+				Message:       getLanguageDes(Key_MESSAGE_MessageContent),
+				Default:       strings.ReplaceAll(content, "\n", " "),
+				AppendDefault: true,
+				HideDefault:   true,
 			},
 		},
 	}
