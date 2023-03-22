@@ -2,6 +2,7 @@
 
 基于OpenAI GPT-3.5 模型API封装的控制台应用，可以根据token数量设置实现相同于官网的聊天功能。  
 不会在Token达到上限后中断聊天。  
+可以在本地文件中保存、回复、共享会话，让你免受OpenAI网站繁忙导致的历史会话无法打开故障。  
 A console application based on OpenAI GPT-3.5 model API, which can achieve the same chat function as the official website.  
 The chat will not be interrupted or reset after the token limit is reached.
 
