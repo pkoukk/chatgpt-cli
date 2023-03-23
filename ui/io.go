@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -96,6 +97,15 @@ func loadConversions() []*gpt.Conversion {
 		if conversion.Config.Model == "" {
 			conversion.Config.Model = "gpt-3.5-turbo"
 		}
+		if conversion.Config.Base64 {
+			for i := range conversion.Messages {
+				b, e := base64.StdEncoding.DecodeString(conversion.Messages[i].Content)
+				if e != nil {
+					log.Fatalln("Error decoding base64:", e)
+				}
+				conversion.Messages[i].Content = string(b)
+			}
+		}
 		conversions = append(conversions, &conversion)
 	}
 	return conversions
@@ -103,16 +113,22 @@ func loadConversions() []*gpt.Conversion {
 
 func saveConversions(conversions []*gpt.Conversion) error {
 	for _, conversion := range conversions {
-		if err := saveConversion(conversion); err != nil {
+		if err := saveConversion(*conversion); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func saveConversion(conversion *gpt.Conversion) error {
+func saveConversion(conversion gpt.Conversion) error {
 	conversion.Updated = time.Now().Unix()
 	fileName := "./chatgpt-cli/conversions/" + conversion.Name + ".json"
+	if conversion.Config.Base64 {
+		for i := range conversion.Messages {
+			c1 := base64.StdEncoding.EncodeToString([]byte(conversion.Messages[i].Content))
+			conversion.Messages[i].Content = c1
+		}
+	}
 	content, err := json.MarshalIndent(conversion, "", "  ")
 	if err != nil {
 		return fmt.Errorf("cannot marshal conversion %s: %w", conversion.Name, err)

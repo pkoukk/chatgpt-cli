@@ -7,6 +7,7 @@ type GlobalConfig struct {
 }
 
 type ConversionConfig struct {
+	Base64      bool
 	Model       string
 	Temperature float64
 	TopP        float64

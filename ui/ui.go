@@ -243,7 +243,7 @@ func (u *CLI) StartMessaging() {
 				u.ac.RemoveMessageAt(id)
 			}
 		} else if result == exit {
-			u.SaveConversion(u.selectedConversion)
+			// u.SaveConversion(u.selectedConversion)
 			return
 		}
 	}
@@ -369,7 +369,12 @@ func (u *CLI) SaveConfig() {
 }
 
 func (u *CLI) SaveConversion(c *gpt.Conversion) {
-	if err := saveConversion(c); err != nil {
+	if c == nil {
+		return
+	}
+	cp := c.DeepClone()
+
+	if err := saveConversion(cp); err != nil {
 		log.Println("Failed to save conversion: ", err)
 	}
 }
